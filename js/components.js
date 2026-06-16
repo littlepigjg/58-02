@@ -210,6 +210,56 @@ const ComponentLibrary = (() => {
                 ]}
             ],
             isContainer: true
+        },
+
+        video: {
+            type: 'video',
+            label: '视频嵌入',
+            icon: '🎬',
+            defaults: {
+                sourceType: 'youtube',
+                youtubeUrl: '',
+                videoUrl: '',
+                posterUrl: 'https://picsum.photos/600/340',
+                autoplay: false,
+                loop: false,
+                width: 100,
+                align: 'center',
+                fallbackMode: 'image',
+                paddingTop: 12,
+                paddingBottom: 12,
+                paddingLeft: 20,
+                paddingRight: 20
+            },
+            fields: [
+                { key: 'sourceType', label: '视频来源', type: 'select', options: [
+                    { value: 'youtube', label: 'YouTube链接' },
+                    { value: 'mp4', label: 'MP4文件' }
+                ]},
+                { key: 'youtubeUrl', label: 'YouTube链接', type: 'text', condition: { field: 'sourceType', value: 'youtube' }},
+                { key: 'videoUrl', label: 'MP4地址', type: 'file', accept: 'video/mp4', condition: { field: 'sourceType', value: 'mp4' }},
+                { key: 'posterUrl', label: '封面图地址', type: 'file', accept: 'image/*' },
+                { type: 'group', label: '播放设置', fields: [
+                    { key: 'autoplay', label: '自动播放', type: 'checkbox' },
+                    { key: 'loop', label: '循环播放', type: 'checkbox' }
+                ]},
+                { key: 'fallbackMode', label: '邮件降级方案', type: 'select', options: [
+                    { value: 'image', label: '静态图片+跳转链接' },
+                    { value: 'gif', label: 'GIF动图预览' }
+                ]},
+                { key: 'width', label: '宽度(%)', type: 'number' },
+                { key: 'align', label: '对齐', type: 'select', options: [
+                    { value: 'left', label: '左对齐' },
+                    { value: 'center', label: '居中' },
+                    { value: 'right', label: '右对齐' }
+                ]},
+                { type: 'group', label: '外边距', fields: [
+                    { key: 'paddingTop', label: '上', type: 'number' },
+                    { key: 'paddingRight', label: '右', type: 'number' },
+                    { key: 'paddingBottom', label: '下', type: 'number' },
+                    { key: 'paddingLeft', label: '左', type: 'number' }
+                ]}
+            ]
         }
     };
 

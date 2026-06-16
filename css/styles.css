@@ -557,3 +557,140 @@ input[type="color"] {
 ::-webkit-scrollbar-thumb:hover {
     background: #a1a1a1;
 }
+
+.checkbox-group {
+    padding: 4px 0;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    gap: 8px;
+    font-size: 13px;
+    color: #374151;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkbox-custom {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #d1d5db;
+    border-radius: 4px;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
+    content: '';
+    width: 5px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-bottom: 2px;
+}
+
+.checkbox-label:hover .checkbox-custom {
+    border-color: #667eea;
+}
+
+.checkbox-text {
+    line-height: 1.4;
+}
+
+.file-upload-group {
+    padding: 4px 0;
+}
+
+.file-upload-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.file-upload-btn {
+    flex-shrink: 0;
+}
+
+.file-upload-name {
+    font-size: 12px;
+    color: #6b7280;
+    padding: 4px 8px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border: 1px dashed #d1d5db;
+}
+
+.file-upload-name.has-value {
+    color: #374151;
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+}
+
+.video-editor-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.video-editor-wrapper video,
+.video-editor-wrapper iframe {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.video-warning {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #92400e;
+}
+
+.video-warning div {
+    margin-bottom: 4px;
+}
+
+.video-warning div:last-child {
+    margin-bottom: 0;
+}
+
+.preview-iframe video,
+.preview-iframe iframe {
+    max-width: 100% !important;
+}
+
+@media only screen and (max-width: 600px) {
+    .file-upload-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .file-upload-name {
+        max-width: 100%;
+    }
+}

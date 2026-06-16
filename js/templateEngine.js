@@ -134,6 +134,11 @@ const TemplateEngine = (() => {
             '<![endif]-->';
     }
 
+    function renderVideo(block) {
+        var d = block.data;
+        return VideoUtils.renderVideoPlayer(d, {});
+    }
+
     function renderBlock(block) {
         switch (block.type) {
             case 'heading': return renderHeading(block);
@@ -142,6 +147,7 @@ const TemplateEngine = (() => {
             case 'button': return renderButton(block);
             case 'divider': return renderDivider(block);
             case 'columns': return renderColumns(block);
+            case 'video': return renderVideo(block);
             default: return '';
         }
     }
@@ -157,6 +163,17 @@ const TemplateEngine = (() => {
         var contentBgColor = options.contentBgColor || '#ffffff';
         var title = options.title || '邮件模板';
         var year = new Date().getFullYear();
+        var hasVideo = blocks.some(function(b) { return b.type === 'video'; });
+        var videoPolyfill = hasVideo ? VideoUtils.getVideoPolyfill() : '';
+
+        var msoFallbackNotes = '';
+        if (hasVideo) {
+            msoFallbackNotes = '<!--[if mso]>\n' +
+                '    <style type="text/css">\n' +
+                '        video.email-video-player { display: none !important; }\n' +
+                '    </style>\n' +
+                '    <![endif]-->\n';
+        }
 
         return '<!DOCTYPE html>\n' +
 '<html lang="zh-CN" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">\n' +
@@ -177,15 +194,18 @@ const TemplateEngine = (() => {
 '        </o:OfficeDocumentSettings>\n' +
 '    </xml>\n' +
 '    <![endif]-->\n' +
+msoFallbackNotes +
 '    <style type="text/css">\n' +
 '        body { margin: 0 !important; padding: 0 !important; -webkit-text-size-adjust: 100% !important; -ms-text-size-adjust: 100% !important; -webkit-font-smoothing: antialiased !important; }\n' +
 '        img { border: 0 !important; outline: none !important; text-decoration: none !important; display: block; }\n' +
 '        table { border-collapse: collapse !important; mso-table-lspace: 0pt !important; mso-table-rspace: 0pt !important; }\n' +
 '        .ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div { line-height: 100%; }\n' +
 '        .yshortcuts a { border-bottom: none !important; }\n' +
+'        video.email-video-player { width: 100% !important; max-width: 100% !important; height: auto !important; }\n' +
 '        @media only screen and (max-width: 600px) {\n' +
 '            .mj-column-per-100 { width: 100% !important; max-width: 100% !important; }\n' +
 '            table[class="mj-column-per-100"] { width: 100% !important; }\n' +
+'            video.email-video-player { width: 100% !important; }\n' +
 '        }\n' +
 '    </style>\n' +
 '</head>\n' +
@@ -212,6 +232,7 @@ const TemplateEngine = (() => {
 '            </td>\n' +
 '        </tr>\n' +
 '    </table>\n' +
+(hasVideo ? '<script type="text/javascript">\n' + videoPolyfill + '\n</script>\n' : '') +
 '</body>\n' +
 '</html>';
     }
@@ -253,6 +274,56 @@ const TemplateEngine = (() => {
                     colsHtml += '<div class="mj-column" data-col-index="' + i + '">' + inner + '</div>';
                 }
                 return '<div class="mj-column-wrapper">' + colsHtml + '</div>';
+            }
+            case 'video': {
+                var poster = VideoUtils.getPosterImage(d);
+                var width = d.width || 100;
+                var videoHtml = '';
+                var placeholderHint = '';
+
+                if (d.sourceType === 'youtube' && !d.youtubeUrl) {
+                    placeholderHint = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.7);color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;">请在右侧粘贴YouTube链接</div>';
+                } else if (d.sourceType === 'mp4' && !d.videoUrl) {
+                    placeholderHint = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.7);color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;">请在右侧上传MP4文件</div>';
+                }
+
+                if (d.sourceType === 'youtube' && d.youtubeUrl) {
+                    var parsed = VideoUtils.parseYoutubeUrl(d.youtubeUrl);
+                    if (parsed) {
+                        var embedUrl = VideoUtils.getYoutubeEmbedUrl(parsed.videoId, d.autoplay, d.loop);
+                        videoHtml = '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:' + width + '%;width:' + width + '%;display:inline-block;">' +
+                            '<iframe src="' + escapeHtml(embedUrl) + '" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>' +
+                        '</div>';
+                    }
+                } else if (d.sourceType === 'mp4' && d.videoUrl) {
+                    var autoplayAttr = d.autoplay ? 'autoplay muted' : '';
+                    var loopAttr = d.loop ? 'loop' : '';
+                    videoHtml = '<video controls ' + autoplayAttr + ' ' + loopAttr + ' playsinline ' +
+                        'poster="' + escapeHtml(poster) + '" style="display:block;max-width:100%;width:' + width + '%;height:auto;border-radius:8px;">' +
+                        '<source src="' + escapeHtml(d.videoUrl) + '" type="video/mp4">' +
+                        '您的浏览器不支持视频播放。' +
+                    '</video>';
+                }
+
+                if (!videoHtml) {
+                    videoHtml = '<div style="position:relative;display:inline-block;max-width:' + width + '%;width:' + width + '%;">' +
+                        '<img src="' + escapeHtml(poster) + '" alt="视频封面" style="display:block;max-width:100%;width:100%;height:auto;border-radius:8px;opacity:0.6;" />' +
+                        '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;background:rgba(0,0,0,0.6);border-radius:50%;display:flex;align-items:center;justify-content:center;">' +
+                            '<svg width="40" height="40" viewBox="0 0 24 24" fill="#ffffff"><path d="M8 5v14l11-7z"/></svg>' +
+                        '</div>' +
+                        placeholderHint +
+                    '</div>';
+                }
+
+                var warnings = VideoUtils.getCompatibilityWarning(d);
+                var warningHtml = '';
+                if (warnings.length > 0) {
+                    warningHtml = '<div style="margin-top:8px;padding:8px 12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;font-size:12px;color:#92400e;">' +
+                        warnings.map(function(w) { return '<div style="margin-bottom:4px;">' + w + '</div>'; }).join('') +
+                    '</div>';
+                }
+
+                return '<div style="text-align:' + d.align + ';">' + videoHtml + warningHtml + '</div>';
             }
             default:
                 return '';

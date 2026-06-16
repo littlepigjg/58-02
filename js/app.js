@@ -590,11 +590,11 @@ const App = (() => {
                     '<div style="font-size:12px;color:#6b7280;margin-bottom:6px;font-weight:600;">' + field.label + '</div>' +
                     '<div class="form-row">';
                 field.fields.forEach(function(subField) {
-                    html += renderFormField(subField, block.data[subField.key]);
+                    html += renderFormField(subField, block.data[subField.key], block.data);
                 });
                 html += '</div></div>';
             } else {
-                html += renderFormField(field, block.data[field.key]);
+                html += renderFormField(field, block.data[field.key], block.data);
             }
         });
 
@@ -640,7 +640,15 @@ const App = (() => {
             '</div>';
     }
 
-    function renderFormField(field, value) {
+    function renderFormField(field, value, blockData) {
+        if (field.condition) {
+            var conditionField = field.condition.field;
+            var conditionValue = field.condition.value;
+            if (blockData && blockData[conditionField] !== conditionValue) {
+                return '';
+            }
+        }
+
         var inputId = 'field-' + field.key;
         switch (field.type) {
             case 'text':
@@ -668,14 +676,95 @@ const App = (() => {
                     '<label for="' + inputId + '">' + field.label + '</label>' +
                     '<input type="color" id="' + inputId + '" data-field="' + field.key + '" value="' + (value || '#000000') + '">' +
                 '</div>';
+            case 'checkbox':
+                var checked = value ? 'checked' : '';
+                return '<div class="form-group checkbox-group">' +
+                    '<label class="checkbox-label">' +
+                        '<input type="checkbox" id="' + inputId + '" data-field="' + field.key + '" ' + checked + '>' +
+                        '<span class="checkbox-custom"></span>' +
+                        '<span class="checkbox-text">' + field.label + '</span>' +
+                    '</label>' +
+                '</div>';
+            case 'file':
+                var accept = field.accept ? ' accept="' + field.accept + '"' : '';
+                var fileInputId = 'file-input-' + field.key;
+                var displayValue = value ? (value.length > 40 ? value.substring(0, 37) + '...' : value) : '点击选择文件';
+                var hasValue = value ? ' has-value' : '';
+                return '<div class="form-group file-upload-group">' +
+                    '<label for="' + inputId + '">' + field.label + '</label>' +
+                    '<div class="file-upload-wrapper">' +
+                        '<input type="file" id="' + fileInputId + '" data-field="' + field.key + '"' + accept + ' style="display:none;">' +
+                        '<button type="button" class="btn btn-small btn-secondary file-upload-btn" data-target="' + fileInputId + '">' +
+                            '📁 选择文件' +
+                        '</button>' +
+                        '<span class="file-upload-name' + hasValue + '" id="' + inputId + '" data-field="' + field.key + '">' + displayValue + '</span>' +
+                    '</div>' +
+                '</div>';
             default:
                 return '';
         }
     }
 
     function bindFieldEvents(container, blockId, parentBlockId, colId) {
+        container.querySelectorAll('.file-upload-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var targetId = btn.dataset.target;
+                var fileInput = document.getElementById(targetId);
+                if (fileInput) {
+                    fileInput.click();
+                }
+            });
+        });
+
+        container.querySelectorAll('input[type="file"][data-field]').forEach(function(fileInput) {
+            var field = fileInput.dataset.field;
+            fileInput.addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+
+                VideoUtils.readFileAsDataUrl(file).then(function(dataUrl) {
+                    var displayName = file.name;
+                    if (displayName.length > 40) {
+                        displayName = displayName.substring(0, 37) + '...';
+                    }
+                    var nameSpan = container.querySelector('.file-upload-name[data-field="' + field + '"]');
+                    if (nameSpan) {
+                        nameSpan.textContent = displayName;
+                        nameSpan.classList.add('has-value');
+                    }
+
+                    if (parentBlockId && colId) {
+                        LayoutManager.updateColumnBlock(parentBlockId, colId, blockId, { [field]: dataUrl });
+                    } else {
+                        LayoutManager.updateBlock(blockId, { [field]: dataUrl });
+                    }
+                }).catch(function(err) {
+                    alert('文件读取失败: ' + err.message);
+                });
+
+                fileInput.value = '';
+            });
+        });
+
         container.querySelectorAll('[data-field]').forEach(function(input) {
             var field = input.dataset.field;
+
+            if (input.type === 'checkbox') {
+                input.addEventListener('change', function(e) {
+                    var value = e.target.checked;
+                    if (parentBlockId && colId) {
+                        LayoutManager.updateColumnBlock(parentBlockId, colId, blockId, { [field]: value });
+                    } else {
+                        LayoutManager.updateBlock(blockId, { [field]: value });
+                    }
+                });
+                return;
+            }
+
+            if (input.classList.contains('file-upload-name')) {
+                return;
+            }
 
             input.addEventListener('input', function(e) {
                 var value = e.target.value;
@@ -684,7 +773,6 @@ const App = (() => {
                 }
 
                 if (parentBlockId && colId) {
-                    LayoutManager.updateColumnBlock(parentBlockId, colId, blockId, {});
                     LayoutManager.updateColumnBlock(parentBlockId, colId, blockId, { [field]: value });
                 } else {
                     LayoutManager.updateBlock(blockId, { [field]: value });
